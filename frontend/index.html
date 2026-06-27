@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPO Due Diligence Bot</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue: #0C447C;
+    --blue-light: #E6F1FB;
+    --text: #2C2C2A;
+    --text-2: #5F5E5A;
+    --text-3: #888780;
+    --border: #D3D1C7;
+    --bg: #F8F7F4;
+    --bg-card: #ffffff;
+    --red: #791F1F;
+    --red-bg: #FCEBEB;
+    --amber: #633806;
+    --amber-bg: #FAEEDA;
+    --green: #27500A;
+    --green-bg: #EAF3DE;
+    --radius: 10px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Navbar ── */
+  .nav {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 56px;
+  }
+  .nav-logo {
+    width: 28px; height: 28px;
+    background: var(--blue);
+    border-radius: 5px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 10px; font-weight: 700;
+  }
+  .nav-brand { font-size: 14px; font-weight: 600; }
+  .nav-sub { font-size: 12px; color: var(--text-3); margin-left: auto; }
+
+  /* ── Pages ── */
+  .page { display: none; }
+  .page.active { display: block; }
+  .container { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  /* ── Upload page ── */
+  .upload-hero { text-align: center; padding: 2.5rem 0 2rem; }
+  .upload-hero h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+  .upload-hero p { font-size: 14px; color: var(--text-2); max-width: 480px; margin: 0 auto; line-height: 1.6; }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+    margin: 1.5rem 0;
+    background: var(--bg-card);
+  }
+  .drop-zone:hover, .drop-zone.drag {
+    border-color: var(--blue);
+    background: var(--blue-light);
+  }
+  .drop-icon { font-size: 40px; margin-bottom: 12px; }
+  .drop-title { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+  .drop-sub { font-size: 13px; color: var(--text-2); }
+
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--text-3); font-size: 13px; margin: 1rem 0;
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 10px 20px; border-radius: 6px;
+    font-size: 14px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card); color: var(--text);
+    transition: all .15s;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary { background: var(--blue); color: white; border-color: var(--blue); }
+  .btn-primary:hover { background: #0a3a6a; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  .error-box {
+    background: var(--red-bg);
+    border: 1px solid #F7C1C1;
+    border-radius: 6px;
+    padding: 12px 16px;
+    color: var(--red);
+    font-size: 13px;
+    margin: 12px 0;
+    display: none;
+  }
+
+  /* ── Processing page ── */
+  .process-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem; margin-top: 1.5rem;
+  }
+  .step-list { list-style: none; }
+  .step-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .step-item:last-child { border-bottom: none; }
+  .step-dot {
+    width: 24px; height: 24px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; flex-shrink: 0;
+  }
+  .dot-done { background: var(--green-bg); color: var(--green); }
+  .dot-active { background: var(--blue-light); color: var(--blue); }
+  .dot-wait { background: var(--bg); color: var(--text-3); border: 1px solid var(--border); }
+  .step-label { font-size: 14px; color: var(--text-2); }
+  .step-label.active { color: var(--text); font-weight: 500; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid var(--blue-light);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Report page ── */
+  .report-header {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem; margin-bottom: 1rem;
+  }
+  .report-company { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+  .report-meta { font-size: 13px; color: var(--text-2); margin-bottom: 12px; }
+  .report-meta span { margin-right: 16px; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+  }
+  .badge-red    { background: var(--red-bg);   color: var(--red); }
+  .badge-amber  { background: var(--amber-bg); color: var(--amber); }
+  .badge-green  { background: var(--green-bg); color: var(--green); }
+  .badge-blue   { background: var(--blue-light); color: var(--blue); }
+  .badge-gray   { background: #F1EFE8; color: #444441; }
+
+  .score-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 10px; margin: 1rem 0;
+  }
+  .score-card { background: var(--bg); border-radius: 6px; padding: 12px 14px; }
+  .score-label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .score-val { font-size: 22px; font-weight: 700; }
+  .score-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+
+  .section {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .section-title { font-size: 14px; font-weight: 600; margin-bottom: 1rem; }
+  .summary-text { font-size: 14px; color: var(--text-2); line-height: 1.7; }
+
+  .fin-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+  .fin-cell { text-align: center; padding: 10px 8px; background: var(--bg); border-radius: 6px; }
+  .fin-year { font-size: 11px; color: var(--text-3); margin-bottom: 3px; }
+  .fin-val { font-size: 15px; font-weight: 600; }
+  .loss { color: var(--red); }
+  .profit { color: var(--green); }
+
+  .metric-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+  .list-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .list-item:last-child { border-bottom: none; }
+  .list-text { font-size: 13px; color: var(--text-2); line-height: 1.5; flex: 1; }
+
+  .promoter-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .promoter-row:last-child { border-bottom: none; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--blue-light); color: var(--blue);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; flex-shrink: 0;
+  }
+  .promoter-name { font-size: 14px; font-weight: 600; }
+  .promoter-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .concern {
+    font-size: 12px; color: var(--text-2);
+    margin-top: 4px; padding-left: 10px;
+    border-left: 2px solid var(--border);
+  }
+
+  .action-bar { display: flex; gap: 10px; margin-top: 1.5rem; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-logo">DD</div>
+  <span class="nav-brand">IPO Due Diligence Bot</span>
+  <span class="nav-sub">Powered by Groq + Llama 3.3</span>
+</nav>
+
+<!-- ── UPLOAD PAGE ── -->
+<div id="page-upload" class="page active">
+  <div class="container">
+    <div class="upload-hero">
+      <h1>DRHP Analysis in minutes</h1>
+      <p>Upload any DRHP and get a structured analysis of financials, risk factors, promoter background, red flags, and cross-border investor notes.</p>
+    </div>
+
+    <div class="drop-zone" id="drop-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="handleDrag(event, 'over')"
+      ondragleave="handleDrag(event, 'leave')"
+      ondrop="handleDrop(event)">
+      <div class="drop-icon">📄</div>
+      <div class="drop-title">Drop your DRHP here</div>
+      <div class="drop-sub">PDF or TXT · Max 15MB · Or click to browse</div>
+    </div>
+    <input type="file" id="file-input" accept=".pdf,.txt" style="display:none" onchange="onFileSelect(this)">
+
+    <div id="upload-error" class="error-box"></div>
+
+    <div class="divider">or</div>
+    <button class="btn btn-primary btn-full" onclick="runDemo()">
+      ▶ Run demo with sample data
+    </button>
+    <p style="text-align:center; font-size:12px; color:var(--text-3); margin-top:10px">
+      No DRHP handy? Demo shows a full analysis without uploading anything.
+    </p>
+  </div>
+</div>
+
+<!-- ── PROCESSING PAGE ── -->
+<div id="page-processing" class="page">
+  <div class="container">
+    <div style="text-align:center; padding:2rem 0 1rem">
+      <div class="spinner" style="width:32px; height:32px; border-width:3px; margin: 0 auto 1rem"></div>
+      <h2 style="font-size:18px; font-weight:600; margin-bottom:6px">Analysing DRHP</h2>
+      <p id="proc-filename" style="font-size:13px; color:var(--text-2)"></p>
+    </div>
+    <div class="process-card">
+      <ul class="step-list" id="step-list"></ul>
+    </div>
+    <div id="proc-error" class="error-box"></div>
+  </div>
+</div>
+
+<!-- ── REPORT PAGE ── -->
+<div id="page-report" class="page">
+  <div class="container">
+
+    <div class="report-header">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px">
+        <div>
+          <div class="report-company" id="r-company"></div>
+          <div class="report-meta">
+            <span id="r-industry"></span>
+            <span id="r-ipo-size"></span>
+            <span id="r-price"></span>
+          </div>
+          <div id="r-risk-badge"></div>
+        </div>
+        <div id="r-verdict-badge"></div>
+      </div>
+      <div class="score-grid" id="r-scores"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📋 Executive Summary</div>
+      <p class="summary-text" id="r-summary"></p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">📊 Financial Highlights</div>
+      <div id="r-financials"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">👤 Promoter Profile</div>
+      <div id="r-promoters"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🚩 Red Flags</div>
+      <div id="r-flags"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">⚠️ Risk Factors</div>
+      <div id="r-risks"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">🌏 Cross-Border Investor Notes</div>
+      <div id="r-fpi"></div>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn" onclick="showPage('page-upload')">← Analyse another</button>
+      <button class="btn btn-primary" onclick="downloadReport()">⬇ Download PDF Report</button>
+    </div>
+
+    <p style="font-size:11px; color:var(--text-3); margin-top:1rem; text-align:center">
+      AI-generated analysis. Not investment advice.
+    </p>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let currentAnalysis = null;
+
+// ── Sample data for demo ───────────────────────────────────
+const SAMPLE = {
+  company: { name: "Ola Electric Mobility Ltd", industry: "Electric Vehicles", ipo_size_cr: 6145, price_band: "Rs 72-76" },
+  financials: {
+    revenue: [{year:"FY22",value_cr:456},{year:"FY23",value_cr:2782},{year:"FY24",value_cr:5010}],
+    pat:     [{year:"FY22",value_cr:-784},{year:"FY23",value_cr:-1472},{year:"FY24",value_cr:-1584}],
+    ebitda_margin_pct: -18.4, debt_equity_ratio: 1.8, roce_pct: -22.3
+  },
+  promoters: [
+    { name: "Bhavish Aggarwal", shareholding_pct: 36.9, pledged_pct: 0,
+      concerns: ["Dual-class share structure concentrates voting control", "Significant OFS — founder liquidity event"] },
+    { name: "ANI Technologies Pvt Ltd", shareholding_pct: 8.2, pledged_pct: 0,
+      concerns: ["Complex related-party transactions with parent entity"] }
+  ],
+  risk_factors: [
+    { category: "financial",   description: "Consecutive losses since inception. PAT loss of Rs 1,584 Cr in FY24.", severity: "high" },
+    { category: "regulatory",  description: "FAME II subsidy being wound down. Replacement policy not finalised.", severity: "high" },
+    { category: "operational", description: "Single manufacturing site — concentration risk at Krishnapatnam plant.", severity: "medium" },
+    { category: "market",      description: "Legacy OEMs accelerating EV launches — moat narrowing rapidly.", severity: "medium" }
+  ],
+  red_flags: [
+    { type: "Never profitable",    description: "Cumulative losses exceed Rs 4,000 Cr. IPO includes OFS — founders cashing out." },
+    { type: "Subsidy dependency",  description: "18% of FY24 revenue from FAME II subsidies now being discontinued." },
+    { type: "Dual-class shares",   description: "Founder retains supermajority voting rights post-IPO." }
+  ],
+  fpi_notes: [
+    { type: "positive", text: "100% FDI permitted under automatic route in automobile manufacturing." },
+    { type: "caution",  text: "Mauritius/Singapore investors must satisfy GAAR beneficial ownership norms." },
+    { type: "negative", text: "30-day anchor lock-in creates elevated volatility immediately post-listing." }
+  ],
+  dd_score: { overall: 41, financials: 28, governance: 38, business_quality: 55, risk_level: "high", investment_verdict: "Cautious" },
+  analyst_summary: "Ola Electric is a market leader in Indian e-2W with 32% share but has never been profitable. The IPO includes significant OFS, meaning founders are partially exiting. Subsidy dependency and concentrated governance are key risks. For FPI investors, limit allocation to under 1% of India portfolio and monitor post-listing EBITDA trajectory before adding."
+};
+
+// ── Page routing ───────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── Drag and drop ──────────────────────────────────────────
+function handleDrag(e, type) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.toggle('drag', type === 'over');
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file) uploadFile(file);
+}
+
+function onFileSelect(input) {
+  if (input.files[0]) uploadFile(input.files[0]);
+}
+
+// ── Steps animation ────────────────────────────────────────
+const STEPS = [
+  "Reading PDF document",
+  "Extracting text from pages",
+  "Sending to AI for analysis",
+  "Extracting financial data",
+  "Identifying risk factors",
+  "Profiling promoters",
+  "Compiling report"
+];
+
+function renderSteps(activeIdx) {
+  document.getElementById('step-list').innerHTML = STEPS.map((s, i) => {
+    const isDone   = i < activeIdx;
+    const isActive = i === activeIdx;
+    const cls  = isDone ? 'dot-done' : isActive ? 'dot-active' : 'dot-wait';
+    const icon = isDone ? '✓' : isActive ? '<span class="spinner"></span>' : (i + 1);
+    return `<li class="step-item">
+      <div class="step-dot ${cls}">${icon}</div>
+      <span class="step-label ${isActive ? 'active' : ''}">${s}</span>
+    </li>`;
+  }).join('');
+}
+
+// ── Upload file to backend ─────────────────────────────────
+async function uploadFile(file) {
+  document.getElementById('upload-error').style.display = 'none';
+
+  if (!file.name.match(/\.(pdf|txt)$/i)) {
+    showError('upload-error', 'Please upload a PDF or TXT file.');
+    return;
+  }
+  if (file.size > 15 * 1024 * 1024) {
+    showError('upload-error', 'File too large. Max 15MB.');
+    return;
+  }
+
+  showPage('page-processing');
+  document.getElementById('proc-filename').textContent = file.name;
+  document.getElementById('proc-error').style.display = 'none';
+  renderSteps(0);
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  // Animate steps while waiting for API
+  let step = 0;
+  const stepTimer = setInterval(() => {
+    if (step < STEPS.length - 1) { step++; renderSteps(step); }
+  }, 2500);
+
+  try {
+    const response = await fetch('/analyze', {
+      method: 'POST',
+      body: formData
+    });
+
+    clearInterval(stepTimer);
+    renderSteps(STEPS.length);
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || 'Analysis failed');
+    }
+
+    const analysis = await response.json();
+    currentAnalysis = analysis;
+    setTimeout(() => renderReport(analysis), 400);
+
+  } catch (err) {
+    clearInterval(stepTimer);
+    showError('proc-error', err.message + ' — make sure the server is running and your GROQ_API_KEY is set in .env');
+  }
+}
+
+// ── Demo mode ──────────────────────────────────────────────
+function runDemo() {
+  currentAnalysis = SAMPLE;
+  showPage('page-processing');
+  document.getElementById('proc-filename').textContent = 'Ola_Electric_DRHP_2024.pdf (demo)';
+  renderSteps(0);
+  let step = 0;
+  const t = setInterval(() => {
+    step++;
+    renderSteps(step);
+    if (step >= STEPS.length) {
+      clearInterval(t);
+      setTimeout(() => renderReport(SAMPLE), 400);
+    }
+  }, 350);
+}
+
+// ── Render report ──────────────────────────────────────────
+function renderReport(d) {
+  showPage('page-report');
+
+  const c  = d.company   || {};
+  const sc = d.dd_score  || {};
+  const fin = d.financials || {};
+
+  // Header
+  document.getElementById('r-company').textContent = c.name || '—';
+  document.getElementById('r-industry').textContent  = c.industry || '';
+  document.getElementById('r-ipo-size').textContent  = c.ipo_size_cr ? `IPO Rs ${Number(c.ipo_size_cr).toLocaleString('en-IN')} Cr` : '';
+  document.getElementById('r-price').textContent     = c.price_band  ? `Band: ${c.price_band}` : '';
+
+  const rl = sc.risk_level || 'high';
+  const rBadge = { high: 'badge-red', medium: 'badge-amber', low: 'badge-green' };
+  document.getElementById('r-risk-badge').innerHTML =
+    `<span class="badge ${rBadge[rl] || 'badge-gray'}">${rl.toUpperCase()} RISK</span>`;
+
+  const verdict = sc.investment_verdict || '—';
+  const vBadge  = verdict === 'Avoid' ? 'badge-red' :
+                  verdict === 'Strong Buy' || verdict === 'Accumulate' ? 'badge-green' : 'badge-amber';
+  document.getElementById('r-verdict-badge').innerHTML =
+    `<span class="badge ${vBadge}" style="font-size:14px; padding:6px 14px">${verdict}</span>`;
+
+  // Scores
+  document.getElementById('r-scores').innerHTML = [
+    { label: 'DD Score',        val: sc.overall          || 0, sub: 'out of 100' },
+    { label: 'Financials',      val: sc.financials        || 0, sub: 'score' },
+    { label: 'Governance',      val: sc.governance        || 0, sub: 'score' },
+    { label: 'Business',        val: sc.business_quality  || 0, sub: 'quality' },
+  ].map(s => `<div class="score-card">
+    <div class="score-label">${s.label}</div>
+    <div class="score-val">${s.val}</div>
+    <div class="score-sub">${s.sub}</div>
+  </div>`).join('');
+
+  // Summary
+  document.getElementById('r-summary').textContent = d.analyst_summary || '—';
+
+  // Financials
+  const rev = fin.revenue || [];
+  const pat = fin.pat     || [];
+  let finHtml = '';
+  if (rev.length) {
+    finHtml += `<div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Revenue (Rs Cr)</div>
+      <div class="fin-grid">${rev.map(r =>
+        `<div class="fin-cell">
+          <div class="fin-year">${r.year}</div>
+          <div class="fin-val">${Number(r.value_cr).toLocaleString('en-IN')}</div>
+        </div>`).join('')}
+      </div></div>`;
+  }
+  if (pat.length) {
+    finHtml += `<div style="margin-bottom:12px">
+      <div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">PAT (Rs Cr)</div>
+      <div class="fin-grid">${pat.map(p =>
+        `<div class="fin-cell">
+          <div class="fin-year">${p.year}</div>
+          <div class="fin-val ${p.value_cr < 0 ? 'loss' : 'profit'}">${Number(p.value_cr).toLocaleString('en-IN')}</div>
+        </div>`).join('')}
+      </div></div>`;
+  }
+  finHtml += `<div class="metric-row">
+    <span class="badge badge-gray">EBITDA: ${Number(fin.ebitda_margin_pct || 0).toFixed(1)}%</span>
+    <span class="badge badge-gray">D/E: ${Number(fin.debt_equity_ratio || 0).toFixed(2)}x</span>
+    <span class="badge badge-gray">ROCE: ${Number(fin.roce_pct || 0).toFixed(1)}%</span>
+  </div>`;
+  document.getElementById('r-financials').innerHTML = finHtml;
+
+  // Promoters
+  document.getElementById('r-promoters').innerHTML = (d.promoters || []).map(p => {
+    const initials = (p.name || '').split(' ').map(w => w[0]).slice(0, 2).join('');
+    const concerns = (p.concerns || []).map(c => `<div class="concern">${c}</div>`).join('');
+    return `<div class="promoter-row">
+      <div class="avatar">${initials}</div>
+      <div style="flex:1">
+        <div class="promoter-name">${p.name}</div>
+        <div class="promoter-meta">Holding: ${Number(p.shareholding_pct || 0).toFixed(1)}% · Pledged: ${Number(p.pledged_pct || 0).toFixed(1)}%</div>
+        ${concerns}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Red flags
+  document.getElementById('r-flags').innerHTML = (d.red_flags || []).map(f =>
+    `<div class="list-item">
+      <span class="badge badge-red" style="flex-shrink:0; margin-top:1px">${f.type}</span>
+      <span class="list-text">${f.description}</span>
+    </div>`
+  ).join('');
+
+  // Risk factors
+  const sevBadge = { high: 'badge-red', medium: 'badge-amber', low: 'badge-green' };
+  document.getElementById('r-risks').innerHTML = (d.risk_factors || []).map(r =>
+    `<div class="list-item">
+      <span class="badge ${sevBadge[r.severity] || 'badge-gray'}" style="flex-shrink:0; margin-top:1px; text-transform:capitalize">${r.severity}</span>
+      <span class="list-text"><strong>${(r.category || '').charAt(0).toUpperCase() + (r.category||'').slice(1)}:</strong> ${r.description}</span>
+    </div>`
+  ).join('');
+
+  // FPI notes
+  const fpiMap = { positive: 'badge-green', caution: 'badge-amber', negative: 'badge-red' };
+  document.getElementById('r-fpi').innerHTML = (d.fpi_notes || []).map(n =>
+    `<div class="list-item">
+      <span class="badge ${fpiMap[n.type] || 'badge-gray'}" style="flex-shrink:0; margin-top:1px; text-transform:capitalize">${n.type}</span>
+      <span class="list-text">${n.text}</span>
+    </div>`
+  ).join('');
+}
+
+// ── Download PDF ───────────────────────────────────────────
+async function downloadReport() {
+  if (!currentAnalysis) return;
+  try {
+    const response = await fetch('/generate-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentAnalysis)
+    });
+    if (!response.ok) throw new Error('PDF generation failed');
+    const blob = await response.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `DD_Report_${(currentAnalysis.company?.name || 'IPO').replace(/\s+/g, '_')}.pdf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert('Download failed: ' + err.message);
+  }
+}
+
+// ── Helper ─────────────────────────────────────────────────
+function showError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>
