@@ -25,10 +25,10 @@ def generate_pdf_report(analysis):
     # ── Custom styles ──────────────────────────────────────
     title_style = ParagraphStyle('Title',
         parent=styles['Normal'],
-        fontSize=20,
+        fontSize=16,
         fontName='Helvetica-Bold',
         textColor=colors.HexColor('#0C447C'),
-        spaceAfter=4
+        spaceAfter=0
     )
     subtitle_style = ParagraphStyle('Subtitle',
         parent=styles['Normal'],
@@ -69,10 +69,12 @@ def generate_pdf_report(analysis):
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#0C447C')))
     story.append(Spacer(1, 10))
     story.append(Paragraph(company.get("name", "Company"), title_style))
+    story.append(Spacer(1, 8))
     story.append(Paragraph(
         f"{company.get('industry', '—')}  |  IPO Size: Rs {company.get('ipo_size_cr', 0):,} Cr  |  Price Band: {company.get('price_band', '—')}",
         subtitle_style
     ))
+    story.append(Spacer(1, 4))
     story.append(Paragraph(
         f"Report generated: {datetime.now().strftime('%d %B %Y')}  |  Confidential",
         small_style
