@@ -1,39 +1,76 @@
-import pdfplumber
+
 import io
+import pdfplumber
 
-def extract_text_from_pdf(file_bytes):
-    text_pages = []
 
-    with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+CHUNK_SIZE = 60000
+MAX_ANALYSIS_CHARS = 80000
+
+
+def chunk_text(text, chunk_size=CHUNK_SIZE):
+
+    return [
+        text[i:i + chunk_size]
+        for i in range(0, len(text), chunk_size)
+    ]
+
+
+def extract_text_from_pdf(file_source):
+
+    retained_text = []
+    total_chars = 0
+
+    if isinstance(file_source, bytes):
+        file_source = io.BytesIO(file_source)
+
+    with pdfplumber.open(file_source) as pdf:
+
         total_pages = len(pdf.pages)
 
-        for i, page in enumerate(pdf.pages):
-            page_text  = page.extract_text()
-            if page_text:
-                text_pages.append(page_text)
+        for page in pdf.pages:
 
-    full_text = "\n\n".join(text_pages)
-    chunks = chunk_text(full_text)
+            try:
+                page_text = page.extract_text()
 
-    return{
-        "full_text" : full_text,
-        "chunks" : chunks,
+                if page_text:
+
+                    total_chars += len(page_text)
+
+                    remaining = (
+                        MAX_ANALYSIS_CHARS -
+                        sum(len(part) for part in retained_text)
+                    )
+
+                    if remaining > 0:
+                        retained_text.append(
+                            page_text[:remaining]
+                        )
+
+            finally:
+                page.close()
+
+    extracted_text = "\n\n".join(retained_text)
+
+    chunks = chunk_text(extracted_text)
+
+    return {
+        "chunks": chunks,
         "page_count": total_pages,
-        "char_count" : len(full_text)
+        "char_count": total_chars
     }
 
-def chunk_text(text, chunk_size = 60000):
-    chunks = []
-    for i in range(0, len(text), chunk_size):
-        chunks.append(text[i:i + chunk_size])
-    return chunks
 
 def extract_text_from_txt(file_bytes):
-    text = file_bytes.decode("utf-8", errors="ignore")
-    chunks = chunk_text(text)
+
+    text = file_bytes.decode(
+        "utf-8",
+        errors="ignore"
+    )
+
+    retained_text = text[:MAX_ANALYSIS_CHARS]
+
     return {
-        "full_text": text,
-        "chunks": chunks,
+        "chunks": chunk_text(retained_text),
         "page_count": 0,
         "char_count": len(text)
     }
